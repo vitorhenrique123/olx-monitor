@@ -5,6 +5,9 @@ const scraperRepository = require('../repositories/scrapperRepository.js')
 
 const Ad = require('./Ad.js');
 
+const MAX_PAGES = parseInt(process.env.MAX_PAGES_PER_SEARCH || '2', 10)
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 let page = 1
 let maxPrice = 0
 let minPrice = 99999999
@@ -28,6 +31,10 @@ const scraper = async (url) => {
     $logger.info(`Will notify: ${notify}`)
 
     do {
+        if (page > 1) {
+            await sleep(1000 + Math.random() * 2000)
+        }
+
         currentUrl = setUrlParam(url, 'o', page)
         let response
         try {
@@ -40,7 +47,7 @@ const scraper = async (url) => {
         }
         page++
 
-    } while (nextPage);
+    } while (nextPage && page <= MAX_PAGES);
 
     $logger.info('Valid ads: ' + validAds)
 
