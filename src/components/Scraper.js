@@ -74,8 +74,28 @@ const scrapePage = async ($, searchTerm, notify) => {
             const flightScript = $('script:not([src])').toArray()
                 .map(element => $(element).text())
                 .find(script => script.includes('listId'))
-            const payload = JSON.parse(flightScript.match(/^self\.__next_f\.push\((.*)\)\s*$/s)[1])[1]
-            adList = JSON.parse(payload.match(/"ads":(\[.*\]),"searchBoxProps":/s)[1])
+
+            if (!flightScript) {
+                const html = $.html()
+                $logger.error(`Não encontrei dados de anúncios na página (nem __NEXT_DATA__ nem flight script). Tamanho do HTML: ${html.length} caracteres.`)
+                $logger.error(`Trecho do HTML retornado: ${html.slice(0, 800)}`)
+                return false
+            }
+
+            const pushMatch = flightScript.match(/^self\.__next_f\.push\((.*)\)\s*$/s)
+            if (!pushMatch) {
+                $logger.error('Script de flight data encontrado, mas em formato inesperado (regex do push não bateu).')
+                return false
+            }
+
+            const payload = JSON.parse(pushMatch[1])[1]
+            const adsMatch = payload.match(/"ads":(\[.*\]),"searchBoxProps":/s)
+            if (!adsMatch) {
+                $logger.error('Payload de flight data encontrado, mas sem o campo "ads" esperado.')
+                return false
+            }
+
+            adList = JSON.parse(adsMatch[1])
         }
 
         if (!Array.isArray(adList) || !adList.length ) {
