@@ -2,6 +2,7 @@ const express = require('express')
 const path = require('path')
 const $logger = require('./Logger.js')
 const searchUrlRepository = require('../repositories/searchUrlRepository.js')
+const { runScraper, isScraperRunning } = require('./RunScraper.js')
 
 const applyPriceParams = (rawUrl, maxPrice, minPrice) => {
     const url = new URL(rawUrl)
@@ -52,6 +53,19 @@ const start = () => {
     app.delete('/api/urls/:id', async (req, res) => {
         try { await searchUrlRepository.deleteUrl(req.params.id); res.json({ ok: true }) }
         catch (error) { $logger.error(error); res.status(500).json({ error: 'Erro ao remover URL' }) }
+    })
+    app.get('/api/scrape/status', (req, res) => {
+        res.json({ running: isScraperRunning() })
+    })
+
+    app.post('/api/scrape/run', (req, res) => {
+        if (isScraperRunning()) {
+            return res.status(409).json({ error: 'Scraper já está rodando' })
+        }
+
+        res.json({ started: true })
+
+        runScraper().catch((error) => $logger.error(error))
     })
 
     const port = process.env.UI_PORT || 3000

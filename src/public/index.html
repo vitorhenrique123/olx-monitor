@@ -20,7 +20,8 @@
 </head>
 <body>
   <h1>🔍 OLX Monitor — URLs monitoradas</h1>
-
+  <button id="run-now" style="margin-bottom:16px;">▶ Rodar agora</button>
+  <span id="run-status" class="muted"></span>
   <form id="add-form">
     <input id="url" placeholder="Cole a URL de busca da OLX" required>
     <input id="label" placeholder="Rótulo (opcional, ex: iPhone 13)">
@@ -90,6 +91,42 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
 })
 
 load()
+
+async function checkStatus() {
+  const res = await fetch('/api/scrape/status')
+  const { running } = await res.json()
+  const statusEl = document.getElementById('run-status')
+  const btn = document.getElementById('run-now')
+  if (running) {
+    statusEl.textContent = 'Rodando...'
+    btn.disabled = true
+  } else {
+    statusEl.textContent = ''
+    btn.disabled = false
+  }
+  return running
+}
+
+document.getElementById('run-now').addEventListener('click', async () => {
+  const res = await fetch('/api/scrape/run', { method: 'POST' })
+  if (res.status === 409) {
+    alert('O scraper já está rodando, espera terminar.')
+    return
+  }
+  document.getElementById('run-status').textContent = 'Rodando...'
+  document.getElementById('run-now').disabled = true
+
+  const poll = setInterval(async () => {
+    const running = await checkStatus()
+    if (!running) {
+      clearInterval(poll)
+      document.getElementById('run-status').textContent = 'Concluído ✓'
+      setTimeout(() => { document.getElementById('run-status').textContent = '' }, 4000)
+    }
+  }, 2000)
+})
+
+checkStatus()
 </script>
 </body>
 </html>
