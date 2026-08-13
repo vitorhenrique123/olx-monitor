@@ -1,11 +1,11 @@
 # Builder Stage
-FROM node:20-alpine AS builder
+FROM node:20 AS builder
 WORKDIR /usr/app
 COPY ./src ./
 RUN npm ci --only=production
 
 # Final Stage
-FROM node:20-alpine
+FROM node:20-slim
 ARG NODE_ENV
 WORKDIR /usr/app
 COPY --from=builder /usr/app/ ./
