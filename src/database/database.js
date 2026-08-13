@@ -29,7 +29,15 @@ const createTables = async () => {
         "maxPrice"      NUMERIC NOT NULL, 
         "created"       TEXT NOT NULL,
         PRIMARY KEY("id" AUTOINCREMENT)
-    );`
+    );`,
+    `CREATE TABLE IF NOT EXISTS "search_urls" (
+    "id"        INTEGER NOT NULL UNIQUE,
+    "url"       TEXT NOT NULL,
+    "label"     TEXT,
+    "active"    INTEGER NOT NULL DEFAULT 1,
+    "created"   TEXT NOT NULL,
+    PRIMARY KEY("id" AUTOINCREMENT)
+);`
   ];
 
   return new Promise(function(resolve, reject) {

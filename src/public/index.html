@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OLX Monitor</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; background: #f5f5f5; color: #222; }
+  h1 { font-size: 1.4rem; }
+  form { display: grid; gap: 8px; background: #fff; padding: 16px; border-radius: 8px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: .95rem; box-sizing: border-box; width: 100%; }
+  .price-row { display: flex; gap: 8px; }
+  button { padding: 8px 12px; border: none; border-radius: 4px; background: #1a73e8; color: #fff; cursor: pointer; font-size: .95rem; }
+  button.danger { background: #d93025; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: .9rem; }
+  td.url { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .muted { color: #888; font-size: .8rem; }
+</style>
+</head>
+<body>
+  <h1>🔍 OLX Monitor — URLs monitoradas</h1>
+
+  <form id="add-form">
+    <input id="url" placeholder="Cole a URL de busca da OLX" required>
+    <input id="label" placeholder="Rótulo (opcional, ex: iPhone 13)">
+    <div class="price-row">
+      <input id="maxPrice" type="number" placeholder="Preço máximo (opcional)">
+      <input id="minPrice" type="number" placeholder="Preço mínimo (opcional)">
+    </div>
+    <button type="submit">Adicionar</button>
+  </form>
+
+  <table>
+    <thead><tr><th>Ativo</th><th>Rótulo</th><th>URL</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+<script>
+async function load() {
+  const res = await fetch('/api/urls')
+  const urls = await res.json()
+  const rows = document.getElementById('rows')
+  rows.innerHTML = ''
+  urls.forEach(u => {
+    const tr = document.createElement('tr')
+    tr.innerHTML = `
+      <td><input type="checkbox" ${u.active ? 'checked' : ''} onchange="toggle(${u.id}, this.checked)"></td>
+      <td>${u.label || '<span class="muted">sem rótulo</span>'}</td>
+      <td class="url" title="${u.url}"><a href="${u.url}" target="_blank">${u.url}</a></td>
+      <td><button class="danger" onclick="remove(${u.id})">Remover</button></td>
+    `
+    rows.appendChild(tr)
+  })
+}
+
+async function toggle(id, active) {
+  await fetch('/api/urls/' + id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active })
+  })
+}
+
+async function remove(id) {
+  if (!confirm('Remover esta URL da lista de monitoramento?')) return
+  await fetch('/api/urls/' + id, { method: 'DELETE' })
+  load()
+}
+
+document.getElementById('add-form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const body = {
+    url: document.getElementById('url').value,
+    label: document.getElementById('label').value,
+    maxPrice: document.getElementById('maxPrice').value || null,
+    minPrice: document.getElementById('minPrice').value || null
+  }
+  const res = await fetch('/api/urls', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  if (res.ok) {
+    e.target.reset()
+    load()
+  } else {
+    alert('Erro ao adicionar URL — confira se é uma URL válida da OLX')
+  }
+})
+
+load()
+</script>
+</body>
+</html>
