@@ -8,6 +8,7 @@ const { runScraper, isScraperRunning } = require('./RunScraper.js')
 const EnvStore = require('./EnvStore.js')
 const RuntimePaths = require('./RuntimePaths.js')
 const { scheduleRestart } = require('./RestartManager.js')
+const StartupManager = require('./StartupManager.js')
 
 const applyPriceParams = (rawUrl, maxPrice, minPrice) => {
     const url = new URL(rawUrl)
@@ -122,6 +123,22 @@ const createApp = ({ envPath = RuntimePaths.getEnvPath() } = {}) => {
     app.post('/api/restart', (req, res) => {
         res.json({ ok: true })
         scheduleRestart({ spawnFn: spawn, exitFn: process.exit })
+    })
+
+    app.get('/api/startup', (req, res) => {
+        res.json({ installed: process.platform === 'win32' ? StartupManager.isInstalled() : false })
+    })
+
+    app.post('/api/startup', (req, res) => {
+        if (process.platform !== 'win32') return res.status(400).json({ error: 'Recurso disponível apenas no Windows' })
+        StartupManager.install(process.execPath)
+        res.json({ installed: true })
+    })
+
+    app.delete('/api/startup', (req, res) => {
+        if (process.platform !== 'win32') return res.status(400).json({ error: 'Recurso disponível apenas no Windows' })
+        StartupManager.uninstall()
+        res.json({ installed: false })
     })
 
     return app
