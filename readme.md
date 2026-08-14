@@ -32,6 +32,12 @@ Se você quiser utiliar o Docker para não ter que instalar o Node e nem as depe
 2. Na primeira vez que você for rodar é preciso buildar a imagem rodando o comando `docker-compose build`
 3. Nas próximas vezes só é necessário rodar o comando `docker-compose up`
 
+### Rodando como executável do Windows
+
+Para instalar sem precisar de Node.js, gerar um `.exe` que inicia junto
+com o Windows e configurar tudo (incluindo o token do Telegram) pela
+própria UI web, veja
+[`docs/windows-build-and-verify.md`](docs/windows-build-and-verify.md).
 
 ### Configuração do Telegram
 
