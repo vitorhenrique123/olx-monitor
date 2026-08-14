@@ -1,3 +1,23 @@
+// Primeiro de tudo, antes de qualquer require que possa estourar: em modo
+// empacotado/oculto não existe console visível, então sem isso uma falha de
+// boot é completamente invisível e indiagnosticável.
+const path = require("path")
+const fs = require("fs")
+const RuntimePaths = require("./components/RuntimePaths")
+
+const logCrash = (error) => {
+  try {
+    const crashLogPath = path.join(RuntimePaths.getAppDir(), 'crash.log')
+    fs.appendFileSync(crashLogPath, `${new Date().toISOString()} ${error.stack || error.message}\n`)
+  } catch (_) {
+    // se nem isso funcionar, não há mais nada a fazer
+  }
+  process.exit(1)
+}
+
+process.on('uncaughtException', logCrash)
+process.on('unhandledRejection', logCrash)
+
 const config = require("./config")
 const cron = require("node-cron")
 const { initializeCycleTLS } = require("./components/CycleTls")
@@ -29,7 +49,7 @@ const main = async () => {
   runScraper()
 }
 
-main()
+main().catch(logCrash)
 
 cron.schedule(config.interval, () => {
   runScraper()
