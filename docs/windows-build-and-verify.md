@@ -16,10 +16,18 @@ programa vai rodar (ou já rode o build direto nela).
 
 ## Checklist de verificação manual (rodar numa máquina Windows de verdade)
 
-1. Copie/renomeie `.env.example` para `.env` dentro de `OlxMonitor/`.
+1. O arquivo `.env` é criado automaticamente (com valores em branco) na
+   primeira vez que o programa roda, caso não exista. Você pode editar os
+   valores depois pela própria aba Configurações da UI web, sem precisar
+   mexer no arquivo diretamente (o `.env.example` fica na pasta só como
+   referência do que cada campo significa).
 2. Dê duplo clique em `OlxMonitor.exe`. Uma janela de console deve abrir
-   nessa primeira vez manual — isso é esperado, o modo oculto só vale
-   quando o programa é iniciado via `iniciar-oculto` (ver passo 6).
+   nessa primeira vez manual — isso é esperado. O modo oculto (sem janela)
+   só vale quando o programa é iniciado automaticamente pelo Windows,
+   depois que você clicar em "Ativar início automático" na aba
+   Configurações (ver passo 6) — esse botão gera um pequeno script `.vbs`
+   que sempre aponta para o caminho correto do `.exe`, mesmo que você mova
+   a pasta depois.
 3. Confirme que apareceu `UI disponível na porta 3000` no console e que
    `data/ads.db` e `data/scrapper.log` foram criados dentro de
    `OlxMonitor/`.
