@@ -44,6 +44,19 @@ const assembleNativeDeps = () => {
   )
   fs.rmSync(path.join(outSqlite3Dir, 'build', 'Release', 'node_sqlite3.node.bak'), { force: true })
 
+  // O sqlite3 carrega o addon via require('bindings')('node_sqlite3.node'),
+  // e o próprio 'bindings' depende de 'file-uri-to-path'. Sem essas duas
+  // pastas ao lado do sqlite3, o require estoura MODULE_NOT_FOUND em
+  // qualquer máquina onde a pasta não esteja dentro de um projeto Node.
+  copyDir(
+    path.join(ROOT, 'node_modules', 'bindings'),
+    path.join(OUT_DIR, 'node_modules', 'bindings')
+  )
+  copyDir(
+    path.join(ROOT, 'node_modules', 'file-uri-to-path'),
+    path.join(OUT_DIR, 'node_modules', 'file-uri-to-path')
+  )
+
   fs.mkdirSync(path.join(OUT_DIR, 'bin'), { recursive: true })
   fs.copyFileSync(
     path.join(ROOT, 'node_modules', 'cycletls', 'dist', 'index.exe'),
