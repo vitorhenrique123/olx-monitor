@@ -1,8 +1,16 @@
 const path = require('path')
 const config = require('../config')
-const sqlite = require("sqlite3").verbose()
+const RuntimePaths = require('../components/RuntimePaths')
+
+// require() com string calculada em runtime (não literal) para o pkg não
+// tentar embutir o addon nativo do sqlite3 dentro do snapshot — ver Task 9.
+const sqlite3ModuleName = RuntimePaths.isPackaged()
+  ? path.join(RuntimePaths.getAppDir(), 'node_modules', 'sqlite3')
+  : 'sqlite3'
+const sqlite = require(sqlite3ModuleName).verbose()
+
 const db = new sqlite.Database(
-  path.join(__dirname, '../', config.dbFile)
+  path.join(config.dataDir, 'ads.db')
 )
 
 const createTables = async () => {

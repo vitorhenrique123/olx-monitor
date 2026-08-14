@@ -2,12 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const config = require('../config')
 
-const logFilePath = path.join(__dirname, '../', config.logger.logFilePath)
-const logDir = path.dirname(logFilePath)
-
-if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true })
-}
+const logFilePath = path.join(config.dataDir, 'scrapper.log')
 
 const formatTimestamp = () => {
     const d = new Date()
