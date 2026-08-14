@@ -28,13 +28,13 @@ TELEGRAM_CHAT_ID=${values.TELEGRAM_CHAT_ID || ''}
 OLX_URLS=${values.OLX_URLS || ''}
 
 # Frequência do cron (padrão: a cada 5 minutos)
-CRON_INTERVAL=${values.CRON_INTERVAL || DEFAULTS.CRON_INTERVAL}
+CRON_INTERVAL=${values.CRON_INTERVAL}
 
 # Quantas páginas de resultado varrer por busca (padrão: 2)
-MAX_PAGES_PER_SEARCH=${values.MAX_PAGES_PER_SEARCH || DEFAULTS.MAX_PAGES_PER_SEARCH}
+MAX_PAGES_PER_SEARCH=${values.MAX_PAGES_PER_SEARCH}
 
 # Porta da UI web (padrão: 3000)
-UI_PORT=${values.UI_PORT || DEFAULTS.UI_PORT}
+UI_PORT=${values.UI_PORT}
 
 # Autenticação básica da UI web — deixe em branco pra desativar
 UI_USERNAME=${values.UI_USERNAME || ''}

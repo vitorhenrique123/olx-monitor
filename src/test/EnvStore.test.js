@@ -40,3 +40,11 @@ test('writeEnv clears a field when explicitly set to empty string', () => {
   const values = readEnv(envPath)
   assert.equal(values.UI_USERNAME, '')
 })
+
+test('writeEnv clears a defaulted field (UI_PORT) when explicitly set to empty string', () => {
+  const envPath = tempEnvPath()
+  writeEnv(envPath, { UI_PORT: '4000' })
+  writeEnv(envPath, { UI_PORT: '' })
+  const values = readEnv(envPath)
+  assert.equal(values.UI_PORT, '')
+})
