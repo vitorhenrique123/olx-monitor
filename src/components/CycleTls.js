@@ -1,9 +1,14 @@
 const initCycleTLS = require("cycletls")
+const path = require('path')
+const RuntimePaths = require('./RuntimePaths')
 
 let cycleTLSInstance
 
 async function initializeCycleTLS() {
-  cycleTLSInstance = await initCycleTLS()
+  const options = RuntimePaths.isPackaged()
+    ? { executablePath: path.join(RuntimePaths.getBinDir(), 'cycletls.exe') }
+    : {}
+  cycleTLSInstance = await initCycleTLS(options)
 }
 
 async function exitCycleTLS() {
