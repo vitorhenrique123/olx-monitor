@@ -19,23 +19,65 @@
 </style>
 </head>
 <body>
-  <h1>🔍 OLX Monitor — URLs monitoradas</h1>
-  <button id="run-now" style="margin-bottom:16px;">▶ Rodar agora</button>
-  <span id="run-status" class="muted"></span>
-  <form id="add-form">
-    <input id="url" placeholder="Cole a URL de busca da OLX" required>
-    <input id="label" placeholder="Rótulo (opcional, ex: iPhone 13)">
-    <div class="price-row">
-      <input id="maxPrice" type="number" placeholder="Preço máximo (opcional)">
-      <input id="minPrice" type="number" placeholder="Preço mínimo (opcional)">
-    </div>
-    <button type="submit">Adicionar</button>
-  </form>
+  <h1>🔍 OLX Monitor</h1>
+  <div style="margin-bottom:16px;">
+    <button id="tab-urls" onclick="showTab('urls')">URLs monitoradas</button>
+    <button id="tab-config" onclick="showTab('config')">Configurações</button>
+  </div>
 
-  <table>
-    <thead><tr><th>Ativo</th><th>Rótulo</th><th>URL</th><th></th></tr></thead>
-    <tbody id="rows"></tbody>
-  </table>
+  <div id="urls-view">
+    <button id="run-now" style="margin-bottom:16px;">▶ Rodar agora</button>
+    <span id="run-status" class="muted"></span>
+    <form id="add-form">
+      <input id="url" placeholder="Cole a URL de busca da OLX" required>
+      <input id="label" placeholder="Rótulo (opcional, ex: iPhone 13)">
+      <div class="price-row">
+        <input id="maxPrice" type="number" placeholder="Preço máximo (opcional)">
+        <input id="minPrice" type="number" placeholder="Preço mínimo (opcional)">
+      </div>
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <table>
+      <thead><tr><th>Ativo</th><th>Rótulo</th><th>URL</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div id="config-view" style="display:none;">
+    <form id="config-form">
+      <label>Token do bot do Telegram<br>
+        <input id="cfg-token" placeholder="deixe em branco para manter o atual">
+      </label>
+      <label>Chat ID do Telegram<br>
+        <input id="cfg-chat-id">
+      </label>
+      <label>Intervalo do cron (formato cron)<br>
+        <input id="cfg-cron">
+      </label>
+      <label>Páginas por busca<br>
+        <input id="cfg-max-pages" type="number" min="1">
+      </label>
+      <label>Porta da UI web<br>
+        <input id="cfg-ui-port" type="number" min="1" max="65535">
+      </label>
+      <label>Usuário da UI web<br>
+        <input id="cfg-ui-username">
+      </label>
+      <label>Senha da UI web<br>
+        <input id="cfg-ui-password" placeholder="deixe em branco para manter a atual">
+      </label>
+      <button type="submit">Salvar</button>
+    </form>
+    <p id="config-status" class="muted"></p>
+    <div id="restart-box" style="display:none;">
+      <button id="restart-now" class="danger">Reiniciar agora para aplicar</button>
+    </div>
+
+    <h2 style="font-size:1.1rem;">Início automático com o Windows</h2>
+    <p id="startup-status" class="muted"></p>
+    <button id="startup-toggle"></button>
+  </div>
 
 <script>
 async function load() {
@@ -127,6 +169,84 @@ document.getElementById('run-now').addEventListener('click', async () => {
 })
 
 checkStatus()
+
+function showTab(tab) {
+  document.getElementById('urls-view').style.display = tab === 'urls' ? '' : 'none'
+  document.getElementById('config-view').style.display = tab === 'config' ? '' : 'none'
+  if (tab === 'config') { loadConfig(); loadStartupStatus() }
+}
+
+async function loadConfig() {
+  const res = await fetch('/api/config')
+  const cfg = await res.json()
+  document.getElementById('cfg-token').placeholder = cfg.TELEGRAM_TOKEN_SET
+    ? 'já configurado — deixe em branco para manter'
+    : 'nenhum token configurado ainda'
+  document.getElementById('cfg-chat-id').value = cfg.TELEGRAM_CHAT_ID || ''
+  document.getElementById('cfg-cron').value = cfg.CRON_INTERVAL || ''
+  document.getElementById('cfg-max-pages').value = cfg.MAX_PAGES_PER_SEARCH || ''
+  document.getElementById('cfg-ui-port').value = cfg.UI_PORT || ''
+  document.getElementById('cfg-ui-username').value = cfg.UI_USERNAME || ''
+  document.getElementById('cfg-ui-password').placeholder = cfg.UI_PASSWORD_SET
+    ? 'já configurada — deixe em branco para manter'
+    : 'nenhuma senha configurada ainda'
+}
+
+document.getElementById('config-form').addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const body = {
+    TELEGRAM_TOKEN: document.getElementById('cfg-token').value,
+    TELEGRAM_CHAT_ID: document.getElementById('cfg-chat-id').value,
+    CRON_INTERVAL: document.getElementById('cfg-cron').value,
+    MAX_PAGES_PER_SEARCH: document.getElementById('cfg-max-pages').value,
+    UI_PORT: document.getElementById('cfg-ui-port').value,
+    UI_USERNAME: document.getElementById('cfg-ui-username').value,
+    UI_PASSWORD: document.getElementById('cfg-ui-password').value,
+  }
+  const res = await fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  const statusEl = document.getElementById('config-status')
+  if (res.ok) {
+    statusEl.textContent = 'Configurações salvas.'
+    document.getElementById('restart-box').style.display = ''
+    document.getElementById('cfg-token').value = ''
+    document.getElementById('cfg-ui-password').value = ''
+    loadConfig()
+  } else {
+    const { error } = await res.json()
+    statusEl.textContent = 'Erro: ' + error
+  }
+})
+
+document.getElementById('restart-now').addEventListener('click', async () => {
+  document.getElementById('config-status').textContent = 'Reiniciando...'
+  await fetch('/api/restart', { method: 'POST' })
+  setTimeout(() => location.reload(), 3000)
+})
+
+async function loadStartupStatus() {
+  const res = await fetch('/api/startup')
+  const { installed } = await res.json()
+  document.getElementById('startup-status').textContent = installed
+    ? 'Início automático ativado.'
+    : 'Início automático desativado.'
+  const btn = document.getElementById('startup-toggle')
+  btn.textContent = installed ? 'Desativar início automático' : 'Ativar início automático'
+  btn.onclick = async () => {
+    const res2 = await fetch('/api/startup', { method: installed ? 'DELETE' : 'POST' })
+    if (res2.ok) {
+      loadStartupStatus()
+    } else {
+      const { error } = await res2.json()
+      document.getElementById('startup-status').textContent = error
+    }
+  }
+}
+
+showTab('urls')
 </script>
 </body>
 </html>
