@@ -1,11 +1,13 @@
 const express = require('express')
 const path = require('path')
 const cron = require('node-cron')
+const { spawn } = require('child_process')
 const $logger = require('./Logger.js')
 const searchUrlRepository = require('../repositories/searchUrlRepository.js')
 const { runScraper, isScraperRunning } = require('./RunScraper.js')
 const EnvStore = require('./EnvStore.js')
 const RuntimePaths = require('./RuntimePaths.js')
+const { scheduleRestart } = require('./RestartManager.js')
 
 const applyPriceParams = (rawUrl, maxPrice, minPrice) => {
     const url = new URL(rawUrl)
@@ -115,6 +117,11 @@ const createApp = ({ envPath = RuntimePaths.getEnvPath() } = {}) => {
 
         EnvStore.writeEnv(envPath, updates)
         res.json({ ok: true, restartRequired: true })
+    })
+
+    app.post('/api/restart', (req, res) => {
+        res.json({ ok: true })
+        scheduleRestart({ spawnFn: spawn, exitFn: process.exit })
     })
 
     return app
