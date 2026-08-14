@@ -33,8 +33,10 @@ test('install writes the vbs to the startup folder and isInstalled reflects it',
   install('C:\\Apps\\OlxMonitor\\OlxMonitor.exe', env)
   assert.equal(isInstalled(env), true)
 
-  const written = fs.readFileSync(getShortcutPath(env), 'utf8')
-  assert.match(written, /OlxMonitor\.exe/)
+  const written = fs.readFileSync(getShortcutPath(env))
+  assert.deepEqual([written[0], written[1]], [0xFF, 0xFE]) // BOM UTF-16LE
+  const withoutBom = written.subarray(2).toString('utf16le')
+  assert.match(withoutBom, /OlxMonitor\.exe/)
 })
 
 test('uninstall removes the shortcut and is idempotent', () => {

@@ -22,10 +22,15 @@ const getShortcutPath = (env = process.env) => path.join(getStartupFolder(env), 
 
 const isInstalled = (env = process.env) => fs.existsSync(getShortcutPath(env))
 
+// UTF-16LE com BOM: sem o BOM o wscript.exe lê o .vbs usando a codepage
+// ANSI do sistema, o que corrompe caracteres não-ASCII no caminho do exe
+// (ex.: C:\Users\João\...) e faz o início automático falhar em silêncio.
 const install = (exePath, env = process.env) => {
   const folder = getStartupFolder(env)
   fs.mkdirSync(folder, { recursive: true })
-  fs.writeFileSync(getShortcutPath(env), getVbsContent(exePath))
+  const bom = Buffer.from([0xFF, 0xFE])
+  const utf16Content = Buffer.from(getVbsContent(exePath), 'utf16le')
+  fs.writeFileSync(getShortcutPath(env), Buffer.concat([bom, utf16Content]))
 }
 
 const uninstall = (env = process.env) => {
