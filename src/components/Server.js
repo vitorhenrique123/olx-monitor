@@ -17,22 +17,24 @@ const applyPriceParams = (rawUrl, maxPrice, minPrice) => {
     return url.toString()
 }
 
-const basicAuth = (req, res, next) => {
-    const user = process.env.UI_USERNAME
-    const pass = process.env.UI_PASSWORD
-    if (!user || !pass) return next() // sem credenciais configuradas = sem auth
-
-    const [scheme, encoded] = (req.headers.authorization || '').split(' ')
-    if (scheme === 'Basic' && encoded) {
-        const [reqUser, reqPass] = Buffer.from(encoded, 'base64').toString().split(':')
-        if (reqUser === user && reqPass === pass) return next()
-    }
-    res.set('WWW-Authenticate', 'Basic realm="olx-monitor"')
-    return res.status(401).send('Autenticação necessária')
-}
-
 const createApp = ({ envPath = RuntimePaths.getEnvPath() } = {}) => {
     const app = express()
+
+    // Lê as credenciais do .env a cada request (e não do process.env), pra
+    // que o valor salvo pela UI valha imediatamente após o restart.
+    const basicAuth = (req, res, next) => {
+        const { UI_USERNAME: user, UI_PASSWORD: pass } = EnvStore.readEnv(envPath)
+        if (!user || !pass) return next() // sem credenciais configuradas = sem auth
+
+        const [scheme, encoded] = (req.headers.authorization || '').split(' ')
+        if (scheme === 'Basic' && encoded) {
+            const [reqUser, reqPass] = Buffer.from(encoded, 'base64').toString().split(':')
+            if (reqUser === user && reqPass === pass) return next()
+        }
+        res.set('WWW-Authenticate', 'Basic realm="olx-monitor"')
+        return res.status(401).send('Autenticação necessária')
+    }
+
     app.use(express.json())
     app.use(basicAuth)
     app.use(express.static(path.join(__dirname, '../public')))
@@ -89,35 +91,37 @@ const createApp = ({ envPath = RuntimePaths.getEnvPath() } = {}) => {
     })
 
     app.post('/api/config', (req, res) => {
-        const body = req.body || {}
-        const updates = {}
+        try {
+            const body = req.body || {}
+            const updates = {}
 
-        if (typeof body.TELEGRAM_TOKEN === 'string' && body.TELEGRAM_TOKEN !== '') updates.TELEGRAM_TOKEN = body.TELEGRAM_TOKEN
-        if (typeof body.TELEGRAM_CHAT_ID === 'string') updates.TELEGRAM_CHAT_ID = body.TELEGRAM_CHAT_ID
-        if (typeof body.UI_USERNAME === 'string') updates.UI_USERNAME = body.UI_USERNAME
-        if (typeof body.UI_PASSWORD === 'string' && body.UI_PASSWORD !== '') updates.UI_PASSWORD = body.UI_PASSWORD
+            if (typeof body.TELEGRAM_TOKEN === 'string' && body.TELEGRAM_TOKEN !== '') updates.TELEGRAM_TOKEN = body.TELEGRAM_TOKEN
+            if (typeof body.TELEGRAM_CHAT_ID === 'string') updates.TELEGRAM_CHAT_ID = body.TELEGRAM_CHAT_ID
+            if (typeof body.UI_USERNAME === 'string') updates.UI_USERNAME = body.UI_USERNAME
+            if (typeof body.UI_PASSWORD === 'string' && body.UI_PASSWORD !== '') updates.UI_PASSWORD = body.UI_PASSWORD
 
-        if (typeof body.CRON_INTERVAL === 'string') {
-            if (!cron.validate(body.CRON_INTERVAL)) {
-                return res.status(400).json({ error: 'Expressão de cron inválida' })
+            if (typeof body.CRON_INTERVAL === 'string') {
+                if (!cron.validate(body.CRON_INTERVAL)) {
+                    return res.status(400).json({ error: 'Expressão de cron inválida' })
+                }
+                updates.CRON_INTERVAL = body.CRON_INTERVAL
             }
-            updates.CRON_INTERVAL = body.CRON_INTERVAL
-        }
 
-        if (body.MAX_PAGES_PER_SEARCH !== undefined) {
-            const n = Number(body.MAX_PAGES_PER_SEARCH)
-            if (!Number.isInteger(n) || n < 1) return res.status(400).json({ error: 'Páginas por busca deve ser um número inteiro positivo' })
-            updates.MAX_PAGES_PER_SEARCH = String(n)
-        }
+            if (body.MAX_PAGES_PER_SEARCH !== undefined) {
+                const n = Number(body.MAX_PAGES_PER_SEARCH)
+                if (!Number.isInteger(n) || n < 1) return res.status(400).json({ error: 'Páginas por busca deve ser um número inteiro positivo' })
+                updates.MAX_PAGES_PER_SEARCH = String(n)
+            }
 
-        if (body.UI_PORT !== undefined) {
-            const n = Number(body.UI_PORT)
-            if (!Number.isInteger(n) || n < 1 || n > 65535) return res.status(400).json({ error: 'Porta inválida' })
-            updates.UI_PORT = String(n)
-        }
+            if (body.UI_PORT !== undefined) {
+                const n = Number(body.UI_PORT)
+                if (!Number.isInteger(n) || n < 1 || n > 65535) return res.status(400).json({ error: 'Porta inválida' })
+                updates.UI_PORT = String(n)
+            }
 
-        EnvStore.writeEnv(envPath, updates)
-        res.json({ ok: true, restartRequired: true })
+            EnvStore.writeEnv(envPath, updates)
+            res.json({ ok: true, restartRequired: true })
+        } catch (error) { $logger.error(error); res.status(500).json({ error: 'Erro ao salvar configurações' }) }
     })
 
     app.post('/api/restart', (req, res) => {
@@ -131,14 +135,18 @@ const createApp = ({ envPath = RuntimePaths.getEnvPath() } = {}) => {
 
     app.post('/api/startup', (req, res) => {
         if (process.platform !== 'win32') return res.status(400).json({ error: 'Recurso disponível apenas no Windows' })
-        StartupManager.install(process.execPath)
-        res.json({ installed: true })
+        try {
+            StartupManager.install(process.execPath)
+            res.json({ installed: true })
+        } catch (error) { $logger.error(error); res.status(500).json({ error: 'Erro ao ativar início automático' }) }
     })
 
     app.delete('/api/startup', (req, res) => {
         if (process.platform !== 'win32') return res.status(400).json({ error: 'Recurso disponível apenas no Windows' })
-        StartupManager.uninstall()
-        res.json({ installed: false })
+        try {
+            StartupManager.uninstall()
+            res.json({ installed: false })
+        } catch (error) { $logger.error(error); res.status(500).json({ error: 'Erro ao desativar início automático' }) }
     })
 
     return app
@@ -146,8 +154,12 @@ const createApp = ({ envPath = RuntimePaths.getEnvPath() } = {}) => {
 
 const start = () => {
     const app = createApp()
-    const port = process.env.UI_PORT || 3000
-    return app.listen(port, () => $logger.info(`UI disponível na porta ${port}`))
+    const envPath = RuntimePaths.getEnvPath()
+    const { UI_PORT } = EnvStore.readEnv(envPath)
+    const port = UI_PORT || 3000
+    // 127.0.0.1 e não 0.0.0.0: a UI é uma ferramenta local de um usuário só,
+    // não tem por que ficar exposta para o resto da rede.
+    return app.listen(port, '127.0.0.1', () => $logger.info(`UI disponível na porta ${port}`))
 }
 
 module.exports = { start, createApp }

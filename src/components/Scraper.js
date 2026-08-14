@@ -4,8 +4,9 @@ const $httpClient = require('./HttpClient.js')
 const scraperRepository = require('../repositories/scrapperRepository.js')
 
 const Ad = require('./Ad.js');
+const config = require('../config.js')
 
-const MAX_PAGES = parseInt(process.env.MAX_PAGES_PER_SEARCH || '2', 10)
+const MAX_PAGES = config.maxPagesPerSearch
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 let page = 1

@@ -4,6 +4,7 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { createApp } = require('../components/Server')
+const { writeEnv } = require('../components/EnvStore')
 
 const tempEnvPath = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'olx-config-api-')), '.env')
 
@@ -61,6 +62,20 @@ test('POST /api/config rejects an invalid cron expression', async () => {
       body: JSON.stringify({ CRON_INTERVAL: 'not-a-cron' }),
     })
     assert.equal(res.status, 400)
+  })
+})
+
+test('basicAuth reads credentials from the injected envPath, not real process.env', async () => {
+  const envPath = tempEnvPath()
+  writeEnv(envPath, { UI_USERNAME: 'admin', UI_PASSWORD: 'secret' })
+  await withServer(envPath, async (base) => {
+    const unauthed = await fetch(`${base}/api/urls`)
+    assert.equal(unauthed.status, 401)
+
+    const authed = await fetch(`${base}/api/urls`, {
+      headers: { Authorization: 'Basic ' + Buffer.from('admin:secret').toString('base64') }
+    })
+    assert.equal(authed.status, 200)
   })
 })
 
